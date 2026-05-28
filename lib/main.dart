@@ -13,13 +13,16 @@ class LocationApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Aula 12 - GPS Avançado',
+      title: 'NEO-TRACKER GPS',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.indigo,
-          brightness: Brightness.light,
-        ),
         useMaterial3: true,
+        // Paleta Dark Futurista: Grafite, Preto, Ciano Neon e Esmeralda
+        scaffoldBackgroundColor: const Color(0xFF0D1117),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF00F0FF), // Ciano Neon
+          secondary: Color(0xFF39FF14), // Verde Neon
+          surface: Color(0xFF161B22), // Grafite Escuro
+        ),
       ),
       home: const LocationHomePage(),
     );
@@ -41,9 +44,8 @@ class _LocationHomePageState extends State<LocationHomePage>
   double _distanceMeters = 0;
   bool _isLoading = false;
   bool _isTracking = false;
-  String _status = 'Pronto para iniciar.';
+  String _status = 'SISTEMA INICIALIZADO. AGUARDANDO COMANDO...';
 
-  // Lista para guardar o histórico de coordenadas por onde o usuário passou
   final List<String> _locationHistory = [];
 
   @override
@@ -64,38 +66,29 @@ class _LocationHomePageState extends State<LocationHomePage>
     if (state == AppLifecycleState.paused && _isTracking) {
       _stopTracking();
       setState(() {
-        _status = 'Tracking pausado (App em segundo plano).';
+        _status = 'SISTEMA PAUSADO CONTRA VAZAMENTO DE ENERGIA (BACKGROUND).';
       });
     }
   }
 
   Future<bool> _handleLocationPermission() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      setState(() {
-        _status = 'GPS desligado. Ative nas configurações.';
-      });
+      setState(() => _status = 'ALERTA: HARDWARE DE GPS DESLIGADO.');
       return false;
     }
 
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        setState(() {
-          _status = 'Permissão de localização negada.';
-        });
+        setState(() => _status = 'ACESSO NEGADO PELO USUÁRIO.');
         return false;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      setState(() {
-        _status = 'Permissão negada para sempre. Ative manualmente.';
-      });
+      setState(() => _status = 'PERMISSÃO BLOQUEADA CRITICAMENTE NO SO.');
       return false;
     }
 
@@ -108,7 +101,7 @@ class _LocationHomePageState extends State<LocationHomePage>
 
     setState(() {
       _isLoading = true;
-      _status = 'Buscando satélites...';
+      _status = 'CONECTANDO COM SATÉLITES RECOGNITIVOS...';
     });
 
     try {
@@ -119,22 +112,17 @@ class _LocationHomePageState extends State<LocationHomePage>
       );
       setState(() {
         _currentPosition = position;
-        _status = 'Posição atualizada!';
-        // Adiciona ao histórico formatado com a hora atual
+        _status = 'PING DE POSIÇÃO ÚNICA EFETUADO COM SUCESSO.';
         final time = DateTime.now().toString().substring(11, 19);
         _locationHistory.insert(
           0,
-          '[$time] Lat: ${position.latitude.toStringAsFixed(4)}, Lon: ${position.longitude.toStringAsFixed(4)}',
+          '[$time] PING -> Lat: ${position.latitude.toStringAsFixed(4)}, Lon: ${position.longitude.toStringAsFixed(4)}',
         );
       });
     } catch (e) {
-      setState(() {
-        _status = 'Erro: $e';
-      });
+      setState(() => _status = 'FALHA NA CONEXÃO: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -149,24 +137,24 @@ class _LocationHomePageState extends State<LocationHomePage>
         _isTracking = true;
         _distanceMeters = 0;
         _lastTrackedPosition = null;
-        _status = 'Rastreamento em tempo real ativo!';
-        _locationHistory.clear(); // Limpa histórico ao começar novo tracking
+        _status = 'RASTREAMENTO EM TEMPO REAL INICIADO.';
+        _locationHistory.clear();
       });
 
       _positionSubscription =
           Geolocator.getPositionStream(
             locationSettings: const LocationSettings(
               accuracy: LocationAccuracy.high,
-              distanceFilter: 2, // Atualiza a cada 2 metros
+              distanceFilter: 2,
             ),
           ).listen((Position position) {
             setState(() {
               _currentPosition = position;
-
               final time = DateTime.now().toString().substring(11, 19);
+
               _locationHistory.insert(
                 0,
-                '[$time] Moveu-se para Lat: ${position.latitude.toStringAsFixed(4)}',
+                '[$time] MOVIMENTO -> Lat: ${position.latitude.toStringAsFixed(4)}',
               );
 
               if (_lastTrackedPosition != null) {
@@ -189,28 +177,65 @@ class _LocationHomePageState extends State<LocationHomePage>
     _positionSubscription = null;
     setState(() {
       _isTracking = false;
-      _status = 'Tracking finalizado.';
+      _status = 'RASTREAMENTO INTERROMPIDO PELO OPERADOR.';
     });
   }
 
-  void _showMapsSnackbar() {
+  void _showMapsDialog() {
     if (_currentPosition == null) return;
-    // URL Corrigida usando a interpolação de string correta do Dart (${var})
     final url =
         'https://www.google.com/maps/search/?api=1&query=${_currentPosition!.latitude},${_currentPosition!.longitude}';
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Abrir no Mapa'),
-        content: SelectableText(
-          url,
-          style: const TextStyle(color: Colors.blue),
+        backgroundColor: const Color(0xFF161B22),
+        title: const Row(
+          children: [
+            Icon(Icons.map, color: Color(0xFF00F0FF)),
+            SizedBox(width: 10),
+            Text(
+              'MATRIX LINK',
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Copie a URL abaixo para ver no mapa:',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SelectableText(
+                url,
+                style: const TextStyle(
+                  color: Color(0xFF00F0FF),
+                  fontFamily: 'monospace',
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Fechar'),
+            child: const Text(
+              'FECHAR',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
         ],
       ),
@@ -219,53 +244,66 @@ class _LocationHomePageState extends State<LocationHomePage>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.explore, color: Colors.white),
+            Icon(Icons.radar, color: Color(0xFF00F0FF)),
             SizedBox(width: 10),
-            Text('GPS Tracker Novotec'),
+            Text(
+              'NEO_TRACKER.SYS',
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.w900, // <- Mudado aqui!
+                letterSpacing: 1.5,
+                fontSize: 18,
+              ),
+            ),
           ],
         ),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: Colors.white,
-        elevation: 5,
+        centerTitle: true,
+        backgroundColor: const Color(0xFF0D1117),
+        elevation: 0,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Status do App com Chip dinâmico
+            // Console Terminal de Status
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: _isTracking
-                    ? Colors.green.shade50
-                    : Colors.indigo.shade50,
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: _isTracking ? Colors.green : Colors.indigo,
+                  color: _isTracking
+                      ? const Color(0xFF39FF14).withOpacity(0.5)
+                      : const Color(0xFF00F0FF).withOpacity(0.3),
+                  width: 1.5,
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
-                    _isTracking ? Icons.g_mobiledata : Icons.info_outline,
-                    color: _isTracking ? Colors.green : Colors.indigo,
+                    _isTracking ? Icons.g_mobiledata : Icons.terminal,
+                    color: _isTracking
+                        ? const Color(0xFF39FF14)
+                        : const Color(0xFF00F0FF),
+                    size: 20,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       _status,
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace',
+                        fontSize: 12,
                         color: _isTracking
-                            ? Colors.green.shade900
-                            : Colors.indigo.shade900,
+                            ? const Color(0xFF39FF14)
+                            : const Color(0xFF00F0FF),
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
@@ -274,69 +312,90 @@ class _LocationHomePageState extends State<LocationHomePage>
             ),
             const SizedBox(height: 20),
 
-            // Painel de Exibição das Coordenadas
+            // Painel Computador de Bordo (Coordenadas)
             Card(
-              elevation: 3,
+              color: const Color(0xFF161B22),
+              elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: Colors.white.withOpacity(0.05)),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
                   children: [
                     Text(
-                      'COORDENADAS ATUAIS',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: Colors.grey.shade600,
+                      'TELEMETRIA SATELITAL',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const Divider(height: 20),
+                    const Divider(color: Colors.white10, height: 25),
                     if (_currentPosition != null) ...[
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildCoordColumn(
+                          _buildCyberHUD(
                             'LATITUDE',
                             _currentPosition!.latitude.toStringAsFixed(6),
                             Icons.unfold_more,
                           ),
-                          _buildCoordColumn(
+                          _buildCyberHUD(
                             'LONGITUDE',
                             _currentPosition!.longitude.toStringAsFixed(6),
                             Icons.unfold_less,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 15),
+                      const Divider(color: Colors.white10, height: 25),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.gps_fixed,
-                            size: 16,
-                            color: Colors.grey.shade600,
+                            size: 14,
+                            color: Color(0xFF00F0FF),
                           ),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 6),
                           Text(
                             'Precisão: ${_currentPosition!.accuracy.toStringAsFixed(1)} metros',
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.w500,
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                              color: Colors.white70,
                             ),
                           ),
                         ],
                       ),
                       TextButton.icon(
-                        onPressed: _showMapsSnackbar,
-                        icon: const Icon(Icons.map),
-                        label: const Text('Ver URL do Google Maps'),
+                        onPressed: _showMapsDialog,
+                        icon: const Icon(
+                          Icons.map,
+                          size: 16,
+                          color: Color(0xFF00F0FF),
+                        ),
+                        label: const Text(
+                          'Ver URL do Google Maps',
+                          style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            color: Color(0xFF00F0FF),
+                          ),
+                        ),
                       ),
                     ] else ...[
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 20),
                         child: Text(
-                          'Nenhum sinal de GPS recebido ainda.',
-                          style: TextStyle(color: Colors.grey),
+                          'AGUARDANDO CONEXÃO PRIMÁRIA...',
+                          style: TextStyle(
+                            fontFamily: 'monospace',
+                            color: Colors.white30,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],
@@ -346,12 +405,13 @@ class _LocationHomePageState extends State<LocationHomePage>
             ),
             const SizedBox(height: 20),
 
-            // Painel de Distância / Rastreamento
-            if (_isTracking)
+            // Display Grande de Distância
+            if (_isTracking) ...[
               Card(
-                color: theme.colorScheme.primaryContainer,
+                color: const Color(0xFF00F0FF).withOpacity(0.05),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
+                  side: const BorderSide(color: Color(0xFF00F0FF), width: 0.5),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -360,8 +420,8 @@ class _LocationHomePageState extends State<LocationHomePage>
                     children: [
                       const Icon(
                         Icons.directions_walk,
-                        size: 36,
-                        color: Colors.indigo,
+                        size: 32,
+                        color: Color(0xFF00F0FF),
                       ),
                       const SizedBox(width: 15),
                       Column(
@@ -370,17 +430,19 @@ class _LocationHomePageState extends State<LocationHomePage>
                           const Text(
                             'DISTÂNCIA ACUMULADA',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontFamily: 'monospace',
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: Colors.indigo,
+                              color: Color(0xFF00F0FF),
                             ),
                           ),
                           Text(
                             '${_distanceMeters.toStringAsFixed(1)} metros',
                             style: const TextStyle(
-                              fontSize: 24,
+                              fontFamily: 'monospace',
+                              fontSize: 22,
                               fontWeight: FontWeight.bold,
-                              color: Colors.indigo,
+                              color: Colors.white,
                             ),
                           ),
                         ],
@@ -389,26 +451,35 @@ class _LocationHomePageState extends State<LocationHomePage>
                   ),
                 ),
               ),
+              const SizedBox(height: 10),
+            ],
 
-            const SizedBox(height: 10),
             Text(
               'HISTÓRICO DE MOVIMENTAÇÃO',
-              style: theme.textTheme.labelMedium?.copyWith(color: Colors.grey),
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 11,
+                color: Colors.grey.shade500,
+              ),
             ),
+            const SizedBox(height: 5),
 
-            // Lista com o histórico de passos
+            // Painel de Logs de Movimentação
             Expanded(
               child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: Colors.black.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: _locationHistory.isEmpty
                     ? const Center(
                         child: Text(
-                          'Histórico vazio',
-                          style: TextStyle(color: Colors.grey),
+                          'HISTÓRICO VAZIO',
+                          style: TextStyle(
+                            fontFamily: 'monospace',
+                            color: Colors.white12,
+                            fontSize: 12,
+                          ),
                         ),
                       )
                     : ListView.builder(
@@ -419,18 +490,23 @@ class _LocationHomePageState extends State<LocationHomePage>
                             dense: true,
                             leading: const Icon(
                               Icons.location_searching,
-                              size: 16,
-                              color: Colors.indigo,
+                              size: 14,
+                              color: Color(0xFF00F0FF),
                             ),
                             title: Text(
                               _locationHistory[index],
-                              style: const TextStyle(fontFamily: 'monospace'),
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
                             ),
                           );
                         },
                       ),
               ),
             ),
+            const SizedBox(height: 20),
 
             // Botões de Comando organizados Lado a Lado
             Row(
@@ -442,12 +518,26 @@ class _LocationHomePageState extends State<LocationHomePage>
                         ? const SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF00F0FF),
+                            ),
                           )
                         : const Icon(Icons.my_location),
-                    label: const Text('Localizar Já'),
+                    label: const Text(
+                      'Localizar Já',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: const Color(0xFF161B22),
+                      foregroundColor: const Color(0xFF00F0FF),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -456,13 +546,22 @@ class _LocationHomePageState extends State<LocationHomePage>
                   child: ElevatedButton.icon(
                     onPressed: _toggleTracking,
                     icon: Icon(_isTracking ? Icons.stop : Icons.play_arrow),
-                    label: Text(_isTracking ? 'Parar' : 'Rastrear'),
+                    label: Text(
+                      _isTracking ? 'Parar' : 'Rastrear',
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       backgroundColor: _isTracking
-                          ? Colors.red.shade400
-                          : Colors.green.shade400,
-                      foregroundColor: Colors.white,
+                          ? const Color(0xFFFF0055)
+                          : const Color(0xFF39FF14),
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -474,31 +573,32 @@ class _LocationHomePageState extends State<LocationHomePage>
     );
   }
 
-  // Widget auxiliar para estruturar as colunas de Latitude e Longitude
-  Widget _buildCoordColumn(String label, String value, IconData icon) {
+  // Componente HUD customizado para as coordenadas ficarem limpas e estilosas
+  Widget _buildCyberHUD(String label, String value, IconData icon) {
     return Column(
       children: [
         Row(
           children: [
-            Icon(icon, size: 16, color: Colors.indigo),
+            Icon(icon, size: 14, color: const Color(0xFF00F0FF)),
             const SizedBox(width: 4),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
+                fontSize: 11,
                 color: Colors.grey,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 6),
         Text(
           value,
           style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
             fontFamily: 'monospace',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
       ],
